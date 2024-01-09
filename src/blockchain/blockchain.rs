@@ -2,9 +2,15 @@ use serde_derive::{Deserialize, Serialize};
 
 use super::block::Block;
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Blockchain {
     blocks: Vec<Block>,
+}
+
+impl Default for Blockchain {
+    fn default() -> Self {
+        Blockchain::new()
+    }
 }
 
 impl Blockchain {

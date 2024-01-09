@@ -171,7 +171,7 @@ impl Block {
         Block {
             block_headers: BlockHeaders {
                 number: 0,
-                difficulty: 200000,
+                difficulty: 1,
                 timestamp: get_current_timestamp().unwrap(),
                 parent_hash: BigUint::one(),
                 beneficiary: BigUint::one(),

@@ -1,10 +1,7 @@
 extern crate serde_derive;
-use core::time;
 use std::str::FromStr;
 
-use hex;
 use serde_derive::{Deserialize, Serialize};
-use tiny_keccak::Keccak;
 extern crate num_bigint;
 
 #[path = "../helpers.rs"]
@@ -38,7 +35,6 @@ pub struct Block {
     nonce: BigUint,
 }
 
-pub const HASH_LENGTH: usize = 64;
 
 impl Block {
     pub fn new(
@@ -61,26 +57,26 @@ impl Block {
         }
     }
 
-    pub fn calculateBlockTargetHash(lastBlock: &Block) -> BigUint {
+    pub fn calculate_block_target_hash(last_block: &Block) -> BigUint {
         return BigUint::from_str(MAX_U256_NUMBER_TEXT).unwrap()
-            / BigUint::from(lastBlock.block_headers.difficulty);
+            / BigUint::from(last_block.block_headers.difficulty);
     }
 
     pub fn get_block_hash(block_headers: &BlockHeaders) -> Option<BigUint> {
         match serde_json::to_string(block_headers) {
             Ok(text) => match sort_characters(&text) {
                 Ok(val) => Some(keccak256(&val)),
-                Error => None,
+                _ => None,
             },
-            Error => None,
+            _ => None,
         }
     }
 
-    pub fn mine_block(lastBlock: &Block, beneficiary: BigUint) -> Option<Block> {
-        let target_hash: BigUint = Block::calculateBlockTargetHash(&lastBlock);
+    pub fn mine_block(last_block: &Block, beneficiary: BigUint) -> Option<Block> {
+        let target_hash: BigUint = Block::calculate_block_target_hash(&last_block);
         let mut under_target_hash;
 
-        let headers_string = serde_json::to_string(&lastBlock.block_headers.parent_hash).unwrap();
+        let headers_string = serde_json::to_string(&last_block.block_headers.parent_hash).unwrap();
         let sorted = sort_characters(&headers_string).unwrap();
 
         let mut nonce = BigUint::from(0u64);
@@ -89,8 +85,8 @@ impl Block {
             let timestamp = get_current_timestamp().unwrap();
 
             let new_block_headers = BlockHeaders {
-                number: lastBlock.block_headers.number + 1,
-                difficulty: Block::adjust_difficulty(lastBlock, timestamp),
+                number: last_block.block_headers.number + 1,
+                difficulty: Block::adjust_difficulty(last_block, timestamp),
                 beneficiary: beneficiary.to_owned(),
                 parent_hash: keccak256(&sorted),
                 timestamp: timestamp,
@@ -102,28 +98,32 @@ impl Block {
 
             under_target_hash = keccak256(&result);
 
-            if (under_target_hash <= target_hash) {
+            if under_target_hash <= target_hash {
                 let new_block = Block {
                     block_headers: new_block_headers,
-                    nonce: nonce,
+                    nonce,
                 };
 
                 return Some(new_block);
             }
 
             nonce += BigUint::from(1u64);
+
+            if nonce > BigUint::from(500000u32) {
+                break None;
+            }
         }
     }
 
-    pub fn adjust_difficulty(lastBlock: &Block, timestamp: u64) -> u32 {
-        if timestamp - lastBlock.block_headers.timestamp > 2 {
-            if (lastBlock.block_headers.difficulty - 1 == 0) {
+    pub fn adjust_difficulty(last_block: &Block, timestamp: u64) -> u32 {
+        if timestamp - last_block.block_headers.timestamp > 2 {
+            if last_block.block_headers.difficulty - 1 == 0 {
                 return 1;
             } else {
-                return lastBlock.block_headers.difficulty - 1;
+                return last_block.block_headers.difficulty - 1;
             }
         } else {
-            return lastBlock.block_headers.difficulty + 1;
+            return last_block.block_headers.difficulty + 1;
         }
     }
 
@@ -132,26 +132,26 @@ impl Block {
         new_block: &Block,
     ) -> Result<bool, ValidateBlockError> {
         //handle genesis
-        if (Block::get_block_hash(&new_block.block_headers).unwrap()
-            == Block::get_block_hash(&Block::genesis().block_headers).unwrap())
+        if Block::get_block_hash(&new_block.block_headers).unwrap()
+            == Block::get_block_hash(&Block::genesis().block_headers).unwrap()
         {
             return Ok(true);
         }
 
         //handle invalid block number
-        if (new_block.block_headers.number != last_block.block_headers.number + 1) {
+        if new_block.block_headers.number != last_block.block_headers.number + 1 {
             return Err(ValidateBlockError::InvalidBlockNumber);
         }
 
         //handle invalid difficulty
-        if (new_block.block_headers.difficulty
-            != Block::adjust_difficulty(last_block, new_block.block_headers.timestamp))
+        if new_block.block_headers.difficulty
+            != Block::adjust_difficulty(last_block, new_block.block_headers.timestamp)
         {
             return Err(ValidateBlockError::InvalidDifficulty);
         }
 
         //handle invalid target hash
-        let last_block_target_hash = Block::calculateBlockTargetHash(&last_block);
+        let last_block_target_hash = Block::calculate_block_target_hash(&last_block);
 
         let new_block_header_hash = Block::get_block_hash(&new_block.block_headers).unwrap();
         let nonce = &new_block.nonce;
@@ -160,7 +160,7 @@ impl Block {
 
         let under_target_hash = keccak256(&stringified);
 
-        if (under_target_hash > last_block_target_hash) {
+        if under_target_hash > last_block_target_hash {
             return Err(ValidateBlockError::InvalidTargetHash);
         }
 
@@ -171,7 +171,7 @@ impl Block {
         Block {
             block_headers: BlockHeaders {
                 number: 0,
-                difficulty: 200000,
+                difficulty: 100000,
                 timestamp: get_current_timestamp().unwrap(),
                 parent_hash: BigUint::one(),
                 beneficiary: BigUint::one(),

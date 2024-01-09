@@ -18,3 +18,6 @@ tokio = { version = "1.0", features = ["full"]}
 axum-macros = {version =  "0.4" }
 tower = { version = "0.4", features = ["util", "timeout", "load-shed", "limit"] }
 tower-http = { version = "0.2.0", features = ["add-extension", "auth", "compression-full", "trace"] }
+tokio-tungstenite = "0.21.0"
+futures = "0.3.0"
+futures-util = { version = "0.3.28", default-features = false, features = ["sink", "std"] }
